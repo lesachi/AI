@@ -1,0 +1,9 @@
+ultralytics
+opencv-python
+pytesseract
+streamlit
+matplotlib
+Pillow
+torch>=2.2
+torchvision
+
