@@ -1,0 +1,50 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cấu hình môi trường ảo
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Thư mục chứa file tạm, log
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+
+# Thư mục Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Thư mục build, dist
+build/
+dist/
+*.egg-info/
+
+# Thư mục cache của pip
+pip-wheel-metadata/
+
+# Thư mục chứa các file IDE/editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Thư mục hệ thống OS
+.DS_Store
+Thumbs.db
+
+# Thư mục và file của PyCharm
+.idea/
+*.iml
+
+# Các file dữ liệu lớn có thể bạn không muốn đưa lên
+*.sqlite3
+*.db
+
+# Các file mật khẩu hoặc config riêng tư (nếu có)
+*.env
