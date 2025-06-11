@@ -16,41 +16,48 @@ class VietnameseOCR:
 
     def preprocess_plate_image(self, plate_img: np.ndarray) -> np.ndarray:
         gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
-        resized = cv2.resize(gray, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_LINEAR)
-        return resized
+        resized = cv2.resize(gray, None, fx=2.5, fy=2.5, interpolation=cv2.INTER_LINEAR)
+        denoised = cv2.GaussianBlur(resized, (3, 3), 0)
+        _, thresh = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        return thresh
 
     def extract_text(self, plate_img: np.ndarray) -> Optional[str]:
         try:
-            processed_img = self.preprocess_plate_image(plate_img)
+           processed = self.preprocess_plate_image(plate_img)
+           results = self.reader.readtext(processed)
+
+           if not results:
+            return None
+
+            # Sắp xếp theo vị trí y tăng dần (dòng trên trước dòng dưới)
+           sorted_lines = sorted(results, key=lambda x: x[0][0][1])
+
+            # ✅ Lấy 2 dòng có độ tin cậy cao nhất
+           texts = []
+           for line in sorted_lines:
+            if line[2] > 0.4:
+                texts.append(line[1])
+            if len(texts) == 2:
+                break
             
-            # Debug: Lưu ảnh đã xử lý để kiểm tra nếu cần
-            # cv2.imwrite("processed_plate.png", processed_img)
-
-            results = self.reader.readtext(processed_img)
-            print("📸 OCR kết quả:", results)
-
-            if not results:
-                return None
-
-            # Lấy kết quả có độ tin cậy cao nhất
-            best_text = max(results, key=lambda x: x[2])[1]
-            cleaned_text = self.clean_text(best_text)
-
-            print("🔤 Text sau làm sạch:", cleaned_text)
-
-            # Tạm thời bỏ kiểm tra định dạng để kiểm tra OCR có hoạt động hay không
-            return cleaned_text
-            # Nếu muốn bật kiểm tra định dạng sau:
-            # return cleaned_text if self.validate_plate_format(cleaned_text) else None
+           full_text = ' '.join(texts)
+           cleaned = self.clean_text(full_text)
+           print("🔤 Text sau làm sạch:", cleaned)
+           return cleaned if cleaned else None
 
         except Exception as e:
             print(f"❌ Lỗi OCR: {e}")
             return None
 
+
     def clean_text(self, text: str) -> str:
         # Làm sạch ký tự không hợp lệ và chuẩn hóa
         cleaned = re.sub(r'[^A-Z0-9-]', '', text.upper())
-        corrections = {'O': '0', 'I': '1', 'S': '5'}
+        corrections = {
+    'O': '0',  # Biển VN không có chữ 'O'
+    'I': '1',  # Không có 'I'
+    'Q': '0'   # Không có 'Q'
+}
         for wrong, correct in corrections.items():
             cleaned = cleaned.replace(wrong, correct)
         return cleaned
