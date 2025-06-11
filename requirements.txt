@@ -6,4 +6,6 @@ matplotlib
 Pillow
 torch>=2.2
 torchvision
-
+roboflow
+fastapi
+uvicorn
