@@ -6,7 +6,7 @@ roboflow:
   api_key: "3r1Sx3tQMCT5Z97kxRT4"  # Thay bằng khóa API từ Roboflow
   workspace: "cheese-qkayz"       # Tên workspace trên Roboflow
   project: "project_ai-fn21l"        # Tên project trên Roboflow
-  version: 2                       # Phiên bản dataset
+  version: 5                       # Phiên bản dataset
 
 # Đường dẫn dữ liệu và mô hình
 paths:

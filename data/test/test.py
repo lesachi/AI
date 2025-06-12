@@ -1,6 +1,8 @@
 import os
 import yaml
 import sys
+import shutil
+# Thêm đường dẫn đến thư mục src vào sys.path để có thể import các module
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 import cv2
 from src.plate_detector import MotorbikePlateDetector
@@ -27,6 +29,12 @@ def main():
     # Xử lý từng ảnh trong thư mục test
     test_images_path = os.path.join(test_path, "images")
     output_dir = paths_config["output_path"]
+   
+
+# Xóa thư mục output cũ (ảnh annotated), để tránh lặp lại kết quả cũ
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
     
     for image_file in os.listdir(test_images_path):
