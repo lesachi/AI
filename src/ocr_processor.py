@@ -31,11 +31,18 @@ class VietnameseOCR:
             processed = self.preprocess_plate_image(plate_img)
             results = self.reader.readtext(processed)
 
-            texts = [r[1] for r in sorted(results, key=lambda x: x[0][0][1]) if r[2] > 0.3]  # Giảm xuống 0.3
+        # Fallback nếu ảnh xử lý không OCR được
+            if not results:
+                results = self.reader.readtext(plate_img)
+
+            texts = [r[1] for r in sorted(results, key=lambda x: x[0][0][1]) if r[2] > 0.3]
             raw_text = ''.join(texts)
+
             cleaned = self.clean_text(raw_text)
-            print("OCR kết quả:", cleaned)
-            return cleaned if cleaned else None
+            corrected = self.correct_common_ocr_errors(cleaned)
+
+            print(f"[OCR] raw='{raw_text}', cleaned='{cleaned}', corrected='{corrected}'")
+            return corrected if corrected else None
 
         except Exception as e:
             print(f"Lỗi OCR: {e}")
@@ -44,8 +51,12 @@ class VietnameseOCR:
     def clean_text(self, text: str) -> str:
         text = text.upper()
         corrections = {
-            'O': '0', 'Q': '0', 'I': '1', 'Z': '2', 'S': '5', 'B': '8', 'G': '6'
-        }
+            'O': '0', 'Q': '0', 'D': '0',
+            'I': '1', 'L': '1',
+            'Z': '2', 'S': '5',
+            'B': '8', 'G': '6'
+}
+
         for wrong, right in corrections.items():
             text = text.replace(wrong, right)
         text = re.sub(r'[^A-Z0-9\-\.]', '', text)
@@ -55,11 +66,18 @@ class VietnameseOCR:
         return any(re.match(pattern, text) for pattern in self.patterns)
 
     def get_plate_info(self, text: str) -> Dict:
+        if not text:
+            return {
+                "valid": False,
+                "length": 0,
+                "type": "unknown"
+            }
         return {
             "valid": self.validate_plate_format(text),
             "length": len(text),
             "type": self.classify_plate_type(text)
         }
+
 
     def classify_plate_type(self, text: str) -> str:
         if re.match(r'^[0-9]{2}[A-Z]{1,2}-[0-9]{3,5}$', text):
@@ -67,3 +85,14 @@ class VietnameseOCR:
         elif re.match(r'^[0-9]{2}[A-Z]{1,2}-[0-9]{2}\.[0-9]{2}$', text):
             return "new"
         return "unknown"
+    
+    def correct_common_ocr_errors(self, text: str) -> str:
+        # Trường hợp: biển có dạng 29-Y7..., nếu nhận nhầm Y7 thành Y1 thì sửa
+         corrected = text
+
+        # Trường hợp phổ biến nhất: nhầm 7 thành 1 sau dấu "-"
+         match = re.match(r'^([0-9]{2}[A-Z]{1,2})-1([0-9]{2,4})$', text)
+         if match:
+            corrected = f"{match.group(1)}-7{match.group(2)}"
+         return corrected
+
