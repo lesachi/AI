@@ -27,8 +27,13 @@ class PlateDetectionTrainer:
     
     # Đánh giá mô hình
     def evaluate(self, data_yaml_path):
-        return self.model.val(data=data_yaml_path)
-    
+     return self.model.val(
+        data=data_yaml_path,
+        project="runs/val",   # Thư mục cố định
+        name="dev_eval",      # Tên kết quả cụ thể
+        exist_ok=True         # Cho phép ghi đè nếu đã tồn tại
+    )
+
     # Lưu mô hình
     def save_model(self, path):
         self.model.save(path)
