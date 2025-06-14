@@ -58,7 +58,7 @@ class MotorbikePlateDetector:
 
                 # Bổ sung sửa lỗi ký tự OCR phổ biến
                 corrections = {
-                    'O': '0', 'I': '1', 'Q': '0', 'B': '8',
+                    'O': '0', 'I': '1', 'Q': '0', 
                     'D': '0', 'U': '0', 'G': '6', 'Z': '2'
                 }
                 for wrong, right in corrections.items():

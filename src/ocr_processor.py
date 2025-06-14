@@ -13,20 +13,22 @@ class VietnameseOCR:
         ]
 
     def preprocess_plate_image(self, plate_img: np.ndarray) -> np.ndarray:
-        if len(plate_img.shape) == 3 and plate_img.shape[2] == 3:
+        if len(plate_img.shape) == 3:
             gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
         else:
-            gray = plate_img
+            gray = plate_img.copy()
 
-        edges = cv2.Canny(gray, 100, 200)
-        combined = cv2.bitwise_or(gray, edges)
-        return combined
-    
+        # Nâng tương phản bằng CLAHE
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         enhanced = clahe.apply(gray)
 
+        # Resize 2x để dễ nhận diện
         resized = cv2.resize(enhanced, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_LINEAR)
+
+        # Làm mịn nhẹ
         blur = cv2.GaussianBlur(resized, (3, 3), 0)
+
+        # Nhị phân hóa bằng Otsu
         _, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         return binary
@@ -34,46 +36,50 @@ class VietnameseOCR:
     def extract_text(self, plate_img: np.ndarray) -> Optional[str]:
         try:
             processed = self.preprocess_plate_image(plate_img)
-           
 
-            # Hiển thị để debug nếu cần:
-            # cv2.imshow("Processed OCR", processed)
-            # cv2.waitKey(0)
-            results = self.reader.readtext(processed, allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-', detail=0)
+            # OCR với confidence + position
+            results = self.reader.readtext(
+                processed,
+                allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
+                detail=1
+            )
 
-            if not results or len(results) == 0:
+            if not results:
                 return None
 
-            # Bỏ qua các kết quả lỗi (ví dụ không đủ chiều dữ liệu)
-            valid_results = []
-            for r in results:
-                if isinstance(r, tuple) and len(r) >= 3:
-                    valid_results.append(r)
+            # Lọc bỏ các kết quả có confidence thấp (<0.3)
+            filtered = [r for r in results if r[2] > 0.3]
+            if not filtered:
+                return None
 
-                    if not valid_results:
-                        return None
+            # Sắp xếp theo trung bình tung độ (để phân biệt dòng trên và dưới)
+            sorted_lines = sorted(filtered, key=lambda x: (x[0][0][1] + x[0][2][1]) / 2)
 
-            # Sắp xếp theo chiều y để giữ dòng đầu trước
-            sorted_lines = sorted(valid_results, key=lambda x: x[0][0][1])
-            texts = [line[1] for line in sorted_lines if line[2] > 0.3]
+            # Ghép nối text các dòng
+            text_parts = [r[1] for r in sorted_lines]
+            full_text = ''.join(text_parts)
 
-            full_text = ' '.join(texts)
             cleaned = self.clean_text(full_text)
+            return cleaned
 
         except Exception as e:
             print(f"❌ Lỗi OCR: {e}")
             return None
+    
 
     def clean_text(self, text: str) -> str:
+        # Loại bỏ ký tự không hợp lệ
         cleaned = re.sub(r'[^A-Z0-9-]', '', text.upper())
+
+        # Sửa lỗi nhầm ký tự thường gặp
         corrections = {
-            'O': '0',
-            'I': '1',
-            'Q': '0',
-            'H': '-' 
+            'O': '0', 'Q': '0', 'D': '0', 'U': '0',
+            'I': '1', 'Z': '2', 'L': '4',
+            'S': '5', 'G': '6', 'H': '-', 'T': '7'
         }
         for wrong, correct in corrections.items():
             cleaned = cleaned.replace(wrong, correct)
+
         return cleaned
 
     def validate_plate_format(self, text: str) -> bool:
